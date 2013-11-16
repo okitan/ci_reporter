@@ -141,7 +141,7 @@ module CI
 
         spec = @suite.testcases.last
         spec.finish
-        spec.name = description_for(name_or_example)
+        spec.name = testcase_name_by(@suite, name_or_example)
         spec.failures << failure
       end
 
@@ -149,7 +149,7 @@ module CI
         @formatter.example_passed(name_or_example)
         spec = @suite.testcases.last
         spec.finish
-        spec.name = description_for(name_or_example)
+        spec.name = testcase_name_by(@suite, name_or_example)
       end
 
       def example_pending(*args)
@@ -157,7 +157,7 @@ module CI
         name = description_for(args[0])
         spec = @suite.testcases.last
         spec.finish
-        spec.name = "#{name} (PENDING)"
+        spec.name = "#{testcase_name_by(@suite, name)} (PENDING)"
         spec.skipped = true
       end
 
@@ -177,6 +177,16 @@ module CI
       end
 
       private
+      def testcase_name_by(suite, name_or_example)
+        description = description_for(name_or_example)
+
+        if description.start_with?(suite.name)
+          description.sub(suite.name, "").lstrip
+        else
+          description
+        end
+      end
+
       def description_for(name_or_example)
         if name_or_example.respond_to?(:full_description)
           name_or_example.full_description
@@ -185,7 +195,7 @@ module CI
         elsif name_or_example.respond_to?(:description)
           name_or_example.description
         else
-          "UNKNOWN"
+          name_or_example.to_s || "UNKNOWN"
         end
       end
 
