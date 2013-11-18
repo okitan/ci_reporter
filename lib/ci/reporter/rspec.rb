@@ -116,8 +116,17 @@ module CI
 
       # rspec >= 1.2.4
       def example_group_started(example_group)
+        @group_level ||= 0
         @formatter.example_group_started(example_group)
-        new_suite(description_for(example_group))
+
+        if @group_level == 0
+          new_suite(description_for(example_group))
+          @group_level += 1
+        end
+      end
+
+      def example_group_finished(example_group)
+        @group_level -= 1
       end
 
       def example_started(name_or_example)
