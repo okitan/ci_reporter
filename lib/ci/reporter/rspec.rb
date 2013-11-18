@@ -121,8 +121,8 @@ module CI
 
         if @group_level == 0
           new_suite(description_for(example_group))
-          @group_level += 1
         end
+        @group_level += 1
       end
 
       def example_group_finished(example_group)
