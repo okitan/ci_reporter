@@ -28,21 +28,14 @@ module CI
       include StructureXmlHelpers
 
       attr_accessor :testcases
-      attr_accessor :stdout, :stderr
       def initialize(name)
         super(name.to_s) # RSpec passes a "description" object instead of a string
         @testcases = []
-        @capture_out = nil
-        @capture_err = nil
       end
 
       # Starts timing the test suite.
       def start
         @start = Time.now
-        unless ENV['CI_CAPTURE'] == "off"
-          @capture_out = OutputCapture.wrap($stdout) {|io| $stdout = io }
-          @capture_err = OutputCapture.wrap($stderr) {|io| $stderr = io }
-        end
       end
 
       # Finishes timing the test suite.
@@ -53,8 +46,6 @@ module CI
         self.failures = testcases.map(&:failure_count).reduce(&:+)
         self.errors = testcases.map(&:error_count).reduce(&:+)
         self.skipped = testcases.count(&:skipped?)
-        self.stdout = @capture_out.finish if @capture_out
-        self.stderr = @capture_err.finish if @capture_err
       end
 
       # Creates an xml string containing the test suite results.
@@ -64,16 +55,6 @@ module CI
         builder.testsuite(cleaned_attributes) do
           @testcases.each do |tc|
             tc.to_xml(builder)
-          end
-          unless self.stdout.to_s.empty?
-            builder.tag! "system-out" do
-              builder.text!(self.stdout)
-            end
-          end
-          unless self.stderr.to_s.empty?
-            builder.tag! "system-err" do
-              builder.text!(self.stderr)
-            end
           end
         end
       end
@@ -85,20 +66,29 @@ module CI
 
       attr_accessor :failures
       attr_accessor :skipped
+      attr_accessor :stdout, :stderr
 
       def initialize(*args)
         super
         @failures = []
+        @capture_out = nil
+        @capture_err = nil
       end
 
       # Starts timing the test.
       def start
         @start = Time.now
+        unless ENV['CI_CAPTURE'] == "off"
+          @capture_out = OutputCapture.wrap($stdout) {|io| $stdout = io }
+          @capture_err = OutputCapture.wrap($stderr) {|io| $stderr = io }
+        end
       end
 
       # Finishes timing the test.
       def finish
         self.time = Time.now - @start
+        self.stdout = @capture_out.finish if @capture_out
+        self.stderr = @capture_err.finish if @capture_err
       end
 
       # Returns non-nil if the test failed.
@@ -126,6 +116,16 @@ module CI
       # Writes xml representing the test result to the provided builder.
       def to_xml(builder)
         builder.testcase(cleaned_attributes) do
+          unless self.stdout.to_s.empty?
+            builder.tag! "system-out" do
+              builder.text!(self.stdout)
+            end
+          end
+          unless self.stderr.to_s.empty?
+            builder.tag! "system-err" do
+              builder.text!(self.stderr)
+            end
+          end
           if skipped?
             builder.skipped
           else
